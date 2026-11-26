@@ -1,0 +1,65 @@
+{
+  "DND5E_MANA": {
+    "Mana": "Mana",
+    "Save": "Save",
+    "ManualBonus": "Manual bonus",
+    "NPCCaster": "Spellcaster level (NPC)",
+    "Category": {
+      "full": "Caster",
+      "half": "Half-caster",
+      "martial": "Martial",
+      "third": "Subclass spellcasting"
+    },
+    "Chat": {
+      "SpellLevel": "Level {level} spell"
+    },
+    "Warn": {
+      "NotEnough": "Not enough mana for {name}: costs {cost}, you have {value}."
+    },
+    "Config": {
+      "Open": "Mana details",
+      "Title": "Mana — {name}",
+      "Total": "Maximum mana",
+      "Current": "Current mana",
+      "Restore": "Refill mana",
+      "Empty": "No class levels.",
+      "AbilityUsed": "Mana ability: {ability}"
+    },
+    "Settings": {
+      "AbilityMode": {
+        "Name": "Mana ability",
+        "Hint": "Which modifier increases mana. \"Per class\" uses each class's entry (editable in \"Mana tables\").",
+        "Class": "Per class (INT or WIS depending on class)",
+        "Int": "Intelligence for every class",
+        "Wis": "Wisdom for every class",
+        "Highest": "Highest of Intelligence and Wisdom"
+      },
+      "ShortRest": {
+        "Name": "Short rest recovery (%)",
+        "Hint": "Percentage of maximum mana recovered on a short rest. A long rest always refills mana."
+      },
+      "IncludeSpecies": {
+        "Name": "Species traits cost mana",
+        "Hint": "If enabled, species traits with limited uses (e.g. Breath Weapon) also cost mana."
+      },
+      "IncludeFeats": {
+        "Name": "Feats cost mana",
+        "Hint": "If enabled, feats with limited uses also cost mana."
+      },
+      "NPCs": {
+        "Name": "Apply to NPCs",
+        "Hint": "If enabled, spellcasting NPCs also use mana (based on spellcaster level)."
+      },
+      "Rules": {
+        "Name": "Mana tables",
+        "Label": "Edit tables (JSON)",
+        "Title": "Mana System — Tables and costs",
+        "Hint": "Edit the tables per class category, spell costs per level, the cost of each class feature (-1 = don't convert) and species bonuses.",
+        "Reset": "Reset to default",
+        "ResetDone": "Mana tables reset to default.",
+        "Saved": "Mana tables saved.",
+        "Invalid": "Invalid JSON: {error}"
+      }
+    }
+  }
+}
