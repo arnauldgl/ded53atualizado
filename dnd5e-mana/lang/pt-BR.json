@@ -1,0 +1,65 @@
+{
+  "DND5E_MANA": {
+    "Mana": "Mana",
+    "Save": "Salvar",
+    "ManualBonus": "Bônus manual",
+    "NPCCaster": "Nível de conjurador (NPC)",
+    "Category": {
+      "full": "Mago",
+      "half": "Meio-conjurador",
+      "martial": "Guerreiro",
+      "third": "Conjuração da subclasse"
+    },
+    "Chat": {
+      "SpellLevel": "Magia de {level}º círculo"
+    },
+    "Warn": {
+      "NotEnough": "Mana insuficiente para {name}: custa {cost}, você tem {value}."
+    },
+    "Config": {
+      "Open": "Detalhes da mana",
+      "Title": "Mana — {name}",
+      "Total": "Mana máxima",
+      "Current": "Mana atual",
+      "Restore": "Encher mana",
+      "Empty": "Sem níveis de classe.",
+      "AbilityUsed": "Atributo de mana: {ability}"
+    },
+    "Settings": {
+      "AbilityMode": {
+        "Name": "Atributo da mana",
+        "Hint": "Qual modificador aumenta a mana. \"Por classe\" usa a tabela de cada classe (editável em \"Tabelas de mana\").",
+        "Class": "Por classe (INT ou SAB conforme a classe)",
+        "Int": "Inteligência para todas as classes",
+        "Wis": "Sabedoria para todas as classes",
+        "Highest": "O maior entre Inteligência e Sabedoria"
+      },
+      "ShortRest": {
+        "Name": "Recuperação no descanso curto (%)",
+        "Hint": "Porcentagem da mana máxima recuperada num descanso curto. O descanso longo sempre enche a mana."
+      },
+      "IncludeSpecies": {
+        "Name": "Traços de espécie gastam mana",
+        "Hint": "Se ligado, traços de espécie com usos limitados (ex.: Sopro de Dragão) também passam a gastar mana."
+      },
+      "IncludeFeats": {
+        "Name": "Talentos gastam mana",
+        "Hint": "Se ligado, talentos com usos limitados também passam a gastar mana."
+      },
+      "NPCs": {
+        "Name": "Aplicar a NPCs",
+        "Hint": "Se ligado, NPCs conjuradores também usam mana (baseada no nível de conjurador)."
+      },
+      "Rules": {
+        "Name": "Tabelas de mana",
+        "Label": "Editar tabelas (JSON)",
+        "Title": "Sistema de Mana — Tabelas e custos",
+        "Hint": "Edite as tabelas por categoria de classe, os custos por círculo de magia, o custo de cada habilidade de classe (-1 = não converter) e o bônus por espécie.",
+        "Reset": "Restaurar padrão",
+        "ResetDone": "Tabelas de mana restauradas para o padrão.",
+        "Saved": "Tabelas de mana salvas.",
+        "Invalid": "JSON inválido: {error}"
+      }
+    }
+  }
+}
