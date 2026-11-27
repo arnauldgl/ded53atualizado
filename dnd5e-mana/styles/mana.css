@@ -66,3 +66,10 @@
   display: flex;
   gap: 0.5rem;
 }
+
+/* Ki do monge */
+.meter-group.dnd5e-mana.pool-ki .meter.mana {
+  --mana-color-1: #a8551f;
+  --mana-color-2: #e0a13f;
+}
+.dnd5e-mana-nofocus { color: #e0a13f; margin-left: 0.25rem; }
