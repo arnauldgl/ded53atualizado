@@ -1,6 +1,7 @@
 import { DEFAULT_RULES, MODULE_ID } from "./config.mjs";
 import {
-  FLAG_PATH, computeMana, featureCostPerUse, getMana, getRules, isConvertibleFeature, setting, spellCost, usesMana
+  FLAG_PATH, REST_CONDITIONS, castingBlock, computeMana, featureCostPerUse, findFocus, getMana, getRules,
+  healerClasses, isConvertibleFeature, poolType, recoveryPercent, restCondition, setting, spellCost, usesMana
 } from "./mana.mjs";
 
 const t = (key, data) => data ? game.i18n.format(`DND5E_MANA.${key}`, data) : game.i18n.localize(`DND5E_MANA.${key}`);
@@ -74,12 +75,30 @@ Hooks.once("init", () => {
     onChange: rerenderSheets
   });
 
-  game.settings.register(MODULE_ID, "shortRestPercent", {
-    name: "DND5E_MANA.Settings.ShortRest.Name",
-    hint: "DND5E_MANA.Settings.ShortRest.Hint",
-    scope: "world", config: true, type: Number, default: 25,
-    range: { min: 0, max: 100, step: 5 }
+  game.settings.register(MODULE_ID, "restCondition", {
+    name: "DND5E_MANA.Settings.RestCondition.Name",
+    hint: "DND5E_MANA.Settings.RestCondition.Hint",
+    scope: "world", config: true, type: String, default: "normal",
+    choices: {
+      normal: "DND5E_MANA.Rest.normal",
+      comfortable: "DND5E_MANA.Rest.comfortable",
+      desperate: "DND5E_MANA.Rest.desperate"
+    },
+    onChange: rerenderSheets
   });
+
+  for ( const key of ["requireFocus", "requireVerbal", "requireSight"] ) {
+    game.settings.register(MODULE_ID, key, {
+      name: `DND5E_MANA.Settings.${key}.Name`,
+      hint: `DND5E_MANA.Settings.${key}.Hint`,
+      scope: "world", config: true, type: Boolean, default: true
+    });
+  }
+
+  // Condição "Silenciado" (amordaçado, sob a magia Silêncio): impede de falar a conjuração.
+  if ( !CONFIG.statusEffects.some(e => e.id === "silenced") ) {
+    CONFIG.statusEffects.push({ id: "silenced", name: "DND5E_MANA.Status.Silenced", img: "icons/svg/sound-off.svg" });
+  }
 
   game.settings.register(MODULE_ID, "includeSpecies", {
     name: "DND5E_MANA.Settings.IncludeSpecies.Name",
@@ -123,7 +142,21 @@ Hooks.once("ready", () => {
     /** Enche a mana de um ator. */
     restore: actor => actor.setFlag(MODULE_ID, "value", getMana(actor).max),
     /** Custo por uso de uma habilidade específica (-1 = não converter; null = remover). */
-    setItemCost: (item, cost) => cost === null ? item.unsetFlag(MODULE_ID, "cost") : item.setFlag(MODULE_ID, "cost", cost)
+    setItemCost: (item, cost) => cost === null ? item.unsetFlag(MODULE_ID, "cost") : item.setFlag(MODULE_ID, "cost", cost),
+    /** Marca (true), desmarca (false) ou volta ao automático (null) um item como foco de conjuração. */
+    setFocus: (item, value) => value === null ? item.unsetFlag(MODULE_ID, "focus") : item.setFlag(MODULE_ID, "focus", !!value),
+    findFocus,
+    castingBlock,
+    /** Condição de descanso atual ("normal", "comfortable", "desperate"). */
+    restCondition,
+    /** Define a condição de descanso do mundo, ou só de uma cena. */
+    setRestCondition: async (condition, scene=null) => {
+      if ( !REST_CONDITIONS.includes(condition) && (condition !== null) ) throw new Error(`Condição inválida: ${condition}`);
+      if ( scene ) return condition === null ? scene.unsetFlag(MODULE_ID, "restCondition") : scene.setFlag(MODULE_ID, "restCondition", condition);
+      return game.settings.set(MODULE_ID, "restCondition", condition ?? "normal");
+    },
+    /** Janela para o mestre escolher a condição de descanso. */
+    chooseRestCondition
   };
 });
 
@@ -145,7 +178,13 @@ function resolveQuantity(target, config) {
 
 Hooks.on("dnd5e.preActivityConsumption", (activity, config) => {
   const actor = activity.actor;
-  if ( !usesMana(actor) || (config.consume === false) ) return;
+  if ( !usesMana(actor) ) return;
+  const block = castingBlock(activity);
+  if ( block ) {
+    ui.notifications.warn(t(`Warn.${block}`, { name: actor.name, spell: activity.item.name }));
+    return false;
+  }
+  if ( config.consume === false ) return;
   if ( config.consume === true ) config.consume = {
     action: true, resources: Array.from(activity.consumption.targets.keys()), spellSlot: true
   };
@@ -199,7 +238,8 @@ Hooks.on("dnd5e.preActivityConsumption", (activity, config) => {
   if ( cost <= 0 ) return;
   const { value } = getMana(actor);
   if ( cost > value ) {
-    ui.notifications.warn(t("Warn.NotEnough", { name: activity.item.name, cost, value }));
+    const key = poolType(actor) === "ki" ? "Warn.NotEnoughKi" : "Warn.NotEnough";
+    ui.notifications.warn(t(key, { name: activity.item.name, cost, value }));
     return false;
   }
   config[MODULE_ID] = { cost, reasons };
@@ -214,7 +254,7 @@ Hooks.on("dnd5e.activityConsumption", (activity, config, messageConfig, updates)
 
 // Nome legível do gasto de mana no cartão de chat.
 Hooks.on("dnd5e.getUnknownAttributeLabel", (attr, options) => {
-  if ( attr.replace(/^system\./, "") === FLAG_PATH ) options.label = t("Mana");
+  if ( attr.replace(/^system\./, "") === FLAG_PATH ) options.label = `${t("Mana")} / ${t("Ki")}`;
 });
 
 /* ============================================ */
@@ -223,14 +263,132 @@ Hooks.on("dnd5e.getUnknownAttributeLabel", (attr, options) => {
 
 Hooks.on("dnd5e.preRestCompleted", (actor, result, config) => {
   if ( !usesMana(actor) ) return;
+  const type = ((config.type ?? result.type) === "short") ? "short" : "long";
+  const condition = restCondition();
   const { value, max } = getMana(actor);
-  let newValue = value;
-  if ( (config.type ?? result.type) === "long" ) newValue = max;
-  else {
-    const pct = Number(setting("shortRestPercent")) || 0;
-    newValue = Math.min(max, value + Math.ceil(max * pct / 100));
+  const info = { type, condition, before: value, max, healer: false };
+  // Classes que curam trocam Dados de Vida por mana no descanso curto (exceto em desespero).
+  if ( (type === "short") && (poolType(actor) === "mana") && healerClasses(actor).length && (condition !== "desperate") ) {
+    info.healer = true;
+    info.after = value;
+  } else {
+    const pct = recoveryPercent(actor, type, condition);
+    info.after = Math.min(max, value + Math.ceil(max * pct / 100));
+    info.pct = pct;
+    if ( info.after !== value ) result.updateData[FLAG_PATH] = info.after;
   }
-  if ( newValue !== value ) result.updateData[FLAG_PATH] = newValue;
+  result[MODULE_ID] = info;
+});
+
+Hooks.on("dnd5e.restCompleted", async (actor, result, config) => {
+  const info = result?.[MODULE_ID];
+  if ( !info ) return;
+  const pool = t(poolType(actor) === "ki" ? "Ki" : "Mana");
+  const cond = t(`Rest.${info.condition}`);
+  if ( !info.healer ) {
+    const gain = info.after - info.before;
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor }),
+      content: `<p class="dnd5e-mana-rest">${t("Chat.Rest", { pool, cond, pct: info.pct, gain, value: info.after, max: info.max })}</p>`
+    });
+    return;
+  }
+  await spendHitDiceForMana(actor, cond);
+});
+
+/** Diálogo do descanso curto das classes que curam: gastar Dados de Vida para recuperar mana. */
+async function spendHitDiceForMana(actor, cond) {
+  const classes = Object.values(actor.classes ?? {}).filter(c => (c.system?.hd?.value ?? 0) > 0);
+  const available = classes.reduce((n, c) => n + (c.system.hd.value ?? 0), 0);
+  const { value, max } = getMana(actor);
+  if ( !available || (value >= max) ) return;
+  const factor = Number(getRules().hitDieManaFactor) || 0.5;
+  const dice = classes.map(c => `${c.system.hd.value}${c.system.hd.denomination}`).join(" + ");
+  const count = await foundry.applications.api.DialogV2.prompt({
+    window: { title: t("HitDice.Title", { name: actor.name }) },
+    content: `<p>${t("HitDice.Hint", { cond, value, max, dice, pct: Math.round(factor * 100) })}</p>
+      <div class="form-group"><label>${t("HitDice.Count")}</label>
+      <input type="number" name="count" value="0" min="0" max="${available}" step="1" autofocus></div>`,
+    ok: { label: t("HitDice.Spend"), icon: "fas fa-dice-d20", callback: (event, button) => button.form.elements.count.valueAsNumber },
+    rejectClose: false
+  });
+  const n = Math.clamp(Math.floor(Number(count) || 0), 0, available);
+  if ( !n ) return;
+  let gain = 0;
+  const rolls = [];
+  const spent = {};
+  for ( let i = 0; i < n; i++ ) {
+    // Usa primeiro o maior dado disponível.
+    const cls = classes
+      .filter(c => (c.system.hd.value - (spent[c.id] ?? 0)) > 0)
+      .sort((a, b) => Number(b.system.hd.denomination.slice(1)) - Number(a.system.hd.denomination.slice(1)))[0];
+    if ( !cls ) break;
+    const roll = await new Roll(`1${cls.system.hd.denomination}`).evaluate();
+    rolls.push(roll);
+    spent[cls.id] = (spent[cls.id] ?? 0) + 1;
+    gain += Math.ceil(roll.total * factor);
+  }
+  for ( const [id, k] of Object.entries(spent) ) {
+    const cls = actor.items.get(id);
+    await cls.update({ "system.hd.spent": (cls.system.hd.spent ?? 0) + k });
+  }
+  const after = Math.min(max, value + gain);
+  await actor.setFlag(MODULE_ID, "value", after);
+  await ChatMessage.create({
+    speaker: ChatMessage.getSpeaker({ actor }),
+    rolls,
+    content: `<p class="dnd5e-mana-rest">${t("Chat.HitDice", { n, results: rolls.map(r => r.total).join(", "), gain: after - value, value: after, max })}</p>`
+  });
+}
+
+/** Janela do mestre: condição de descanso do mundo e da cena atual. */
+async function chooseRestCondition() {
+  if ( !game.user.isGM ) return ui.notifications.warn(t("Rest.GMOnly"));
+  const world = setting("restCondition");
+  const sceneFlag = canvas?.scene?.getFlag(MODULE_ID, "restCondition") ?? "";
+  const opts = (sel, withEmpty) => (withEmpty ? `<option value="" ${!sel ? "selected" : ""}>${t("Rest.UseWorld")}</option>` : "")
+    + REST_CONDITIONS.map(c => `<option value="${c}" ${c === sel ? "selected" : ""}>${t(`Rest.${c}`)}</option>`).join("");
+  const r = getRules();
+  const linhas = REST_CONDITIONS.map(c => `<tr><td>${t(`Rest.${c}`)}</td><td>${r.recovery[c].long}%</td><td>${r.recovery[c].short}%</td><td>${r.kiRecovery[c].long}% / ${r.kiRecovery[c].short}%</td></tr>`).join("");
+  const result = await foundry.applications.api.DialogV2.prompt({
+    window: { title: t("Rest.Title") },
+    content: `<table class="dnd5e-mana-breakdown"><thead><tr><th></th><th>${t("Rest.Long")}</th><th>${t("Rest.Short")}</th><th>Ki</th></tr></thead><tbody>${linhas}</tbody></table>
+      <p class="hint">${t("Rest.HealerHint")}</p>
+      <div class="form-group"><label>${t("Rest.World")}</label><select name="world">${opts(world, false)}</select></div>
+      ${canvas?.scene ? `<div class="form-group"><label>${t("Rest.Scene", { scene: canvas.scene.name })}</label><select name="scene">${opts(sceneFlag, true)}</select></div>` : ""}`,
+    ok: { label: t("Save"), icon: "fas fa-bed", callback: (event, button) => ({
+      world: button.form.elements.world.value, scene: button.form.elements.scene?.value
+    }) },
+    rejectClose: false
+  });
+  if ( !result ) return;
+  await game.settings.set(MODULE_ID, "restCondition", result.world);
+  if ( canvas?.scene && (result.scene !== undefined) ) {
+    if ( result.scene ) await canvas.scene.setFlag(MODULE_ID, "restCondition", result.scene);
+    else await canvas.scene.unsetFlag(MODULE_ID, "restCondition");
+  }
+  ui.notifications.info(t("Rest.Now", { cond: t(`Rest.${restCondition()}`) }));
+  rerenderSheets();
+}
+
+/* ============================================ */
+/*  Foco de conjuração (botão na ficha do item) */
+/* ============================================ */
+
+Hooks.on("getHeaderControlsApplicationV2", (app, controls) => {
+  const item = app.document;
+  if ( !(item instanceof Item) || !item.isOwner || !["equipment", "weapon", "tool", "loot", "consumable"].includes(item.type) ) return;
+  app.options.actions ??= {};
+  app.options.actions.dnd5eManaFocus ??= async function() {
+    const doc = this.document;
+    const current = doc.getFlag(MODULE_ID, "focus");
+    // automático → foco → não é foco → automático
+    const next = current === undefined ? true : current === true ? false : null;
+    if ( next === null ) await doc.unsetFlag(MODULE_ID, "focus");
+    else await doc.setFlag(MODULE_ID, "focus", next);
+    ui.notifications.info(t(`Focus.State.${next === null ? "auto" : next ? "on" : "off"}`, { name: doc.name }));
+  };
+  controls.push({ action: "dnd5eManaFocus", icon: "fas fa-wand-sparkles", label: "DND5E_MANA.Focus.Toggle" });
 });
 
 /* ============================================ */
@@ -294,12 +452,17 @@ async function openManaConfig(actor) {
 
 function buildMeter(actor, editable) {
   const { value, max } = getMana(actor);
+  const pool = poolType(actor);
   const pct = max ? Math.round((value / max) * 100) : 0;
   const group = document.createElement("div");
-  group.className = "meter-group dnd5e-mana";
+  group.className = `meter-group dnd5e-mana pool-${pool}`;
+  const cond = t(`Rest.${restCondition()}`);
+  const focus = (pool === "mana") && setting("requireFocus") && actor.itemTypes?.spell?.length
+    ? (findFocus(actor) ? "" : ` <i class="fas fa-triangle-exclamation dnd5e-mana-nofocus" data-tooltip="${t("Focus.Missing")}"></i>`)
+    : "";
   group.innerHTML = `
     <div class="label roboto-condensed-upper">
-      <span>${t("Mana")}</span>
+      <span data-tooltip="${t("Rest.Tooltip", { cond })}">${t(pool === "ki" ? "Ki" : "Mana")}${focus}</span>
       ${editable ? `<button type="button" class="config-button unbutton dnd5e-mana-config" data-tooltip="${t("Config.Open")}"
         aria-label="${t("Config.Open")}"><i class="fas fa-cog" inert></i></button>` : ""}
     </div>

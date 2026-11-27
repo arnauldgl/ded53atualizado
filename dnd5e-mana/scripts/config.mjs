@@ -19,8 +19,49 @@ export const DEFAULT_RULES = {
     martial: [5, 7, 9, 13, 15, 17, 19, 23, 25, 27, 29, 33, 35, 37, 39, 43, 45, 47, 49, 53],
 
     // Somado ao marcial quando a subclasse conjura (Cavaleiro Místico, Trapaceiro Arcano).
-    third: [0, 0, 4, 4, 4, 6, 6, 6, 14, 14, 14, 17, 17, 17, 27, 27, 27, 32, 32, 32]
+    third: [0, 0, 4, 4, 4, 6, 6, 6, 14, 14, 14, 17, 17, 17, 27, 27, 27, 32, 32, 32],
+
+    // Ki do Monge (reserva própria, não é mana): pontos de foco = nível de monge.
+    ki: [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
   },
+
+  /**
+   * Recuperação (% do máximo) conforme a condição do descanso.
+   * normal: descanso comum na estrada; comfortable: taberna, castelo, cama boa;
+   * desperate: situação de desespero (masmorra, perseguição, frio, fome).
+   */
+  recovery: {
+    normal:      { long: 40,  short: 15 },
+    comfortable: { long: 100, short: 15 },
+    desperate:   { long: 33,  short: 0 }
+  },
+
+  /** Recuperação do Ki do Monge (a respiração do monge volta mais rápido no descanso curto). */
+  kiRecovery: {
+    normal:      { long: 50,  short: 50 },
+    comfortable: { long: 100, short: 50 },
+    desperate:   { long: 33,  short: 0 }
+  },
+
+  /**
+   * Classes que curam: no descanso curto, em vez da porcentagem, gastam Dados de Vida
+   * para recuperar mana. Cada dado devolve (resultado × fator), arredondado para cima.
+   */
+  healerClasses: ["cleric", "druid", "paladin", "bard", "ranger"],
+  hitDieManaFactor: 0.5,
+
+  /**
+   * Foco de conjuração: o personagem precisa ter um destes equipado (ou no inventário,
+   * para itens que não se equipam). Também conta qualquer item marcado como foco
+   * (botão "Foco de conjuração" no cabeçalho da ficha do item) e instrumentos musicais.
+   */
+  focusKeywords: [
+    "varinha", "cajado", "bastão", "bastao", "orbe", "cristal", "foco", "símbolo sagrado", "simbolo sagrado",
+    "amuleto", "emblema", "relicário", "relicario", "visco", "totem", "wand", "staff", "rod", "orb",
+    "crystal", "focus", "holy symbol", "amulet", "emblem", "reliquary", "mistletoe"
+  ],
+  /** Classes que podem usar a arma (ou o escudo) equipada como foco sagrado. */
+  weaponFocusClasses: ["paladin", "cleric"],
 
   /**
    * Categoria forçada por classe (identificador). Se a classe não estiver aqui,
@@ -28,7 +69,7 @@ export const DEFAULT_RULES = {
    * full/pact → "full", half/artificer → "half", third → "martial" + "third", none → "martial".
    */
   classCategory: {
-    barbarian: "martial", fighter: "martial", monk: "martial", rogue: "martial",
+    barbarian: "martial", fighter: "martial", monk: "ki", rogue: "martial",
     paladin: "half", ranger: "half", artificer: "half",
     bard: "full", cleric: "full", druid: "full", sorcerer: "full", warlock: "full", wizard: "full"
   },
@@ -43,7 +84,7 @@ export const DEFAULT_RULES = {
    * Quanto o modificador do atributo pesa, por categoria.
    * Bônus = modificador × arredondar_para_cima(nível total ÷ 2) × fator.
    */
-  abilityFactor: { full: 1, half: 0.75, martial: 0.5 },
+  abilityFactor: { full: 1, half: 0.75, martial: 0.5, ki: 0 },
 
   /** Custo de mana por nível do espaço de magia usado (truque = nível 0). */
   spellCost: { "0": 0, "1": 2, "2": 3, "3": 5, "4": 6, "5": 7, "6": 9, "7": 10, "8": 11, "9": 13 },

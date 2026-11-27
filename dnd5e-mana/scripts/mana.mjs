@@ -50,7 +50,7 @@ export function classCategory(cls, rules) {
   return { id, category, third: third && (category === "martial") };
 }
 
-const CATEGORY_RANK = { martial: 0, half: 1, full: 2 };
+const CATEGORY_RANK = { ki: -1, martial: 0, half: 1, full: 2 };
 
 /** Encontra a chave de espécie nas regras. */
 export function speciesKey(actor, rules) {
@@ -95,7 +95,7 @@ export function computeMana(actor, rules=getRules()) {
   const classes = Object.values(actor.classes ?? {});
   let level = 0;
   let main = null;
-  let bestCategory = "martial";
+  let bestCategory = "ki";
 
   for ( const cls of classes ) {
     const lvl = cls.system?.levels ?? 0;
@@ -111,6 +111,9 @@ export function computeMana(actor, rules=getRules()) {
     if ( !main || (lvl > main.lvl) ) main = { id: info.id, lvl };
     if ( CATEGORY_RANK[info.category] > CATEGORY_RANK[bestCategory] ) bestCategory = info.category;
   }
+
+  if ( !parts.length ) bestCategory = "martial";
+  const pool = (bestCategory === "ki") ? "ki" : "mana";
 
   // NPCs: usa o nível de conjurador como mago.
   if ( !classes.length && (actor.type === "npc") ) {
@@ -132,7 +135,7 @@ export function computeMana(actor, rules=getRules()) {
       value
     });
 
-    const sKey = speciesKey(actor, rules);
+    const sKey = (pool === "ki") ? null : speciesKey(actor, rules);
     const sp = sKey ? rules.species[sKey] : null;
     if ( sp ) {
       const v = Math.floor((sp.flat ?? 0) + ((sp.perLevel ?? 0) * level));
@@ -144,7 +147,12 @@ export function computeMana(actor, rules=getRules()) {
   if ( bonus ) parts.push({ label: game.i18n.localize("DND5E_MANA.ManualBonus"), value: bonus });
 
   const max = Math.max(0, parts.reduce((t, p) => t + p.value, 0));
-  return { max, parts, level, ability };
+  return { max, parts, level, ability, pool };
+}
+
+/** "ki" para o Monge (só monge), "mana" para os demais. */
+export function poolType(actor) {
+  return computeMana(actor).pool;
 }
 
 export function getMana(actor) {
@@ -185,4 +193,90 @@ export function featureCostPerUse(item, targetItem, rules=getRules()) {
     }
   }
   return Number(rules.defaultFeatureCost) || 0;
+}
+
+/* -------------------------------------------- */
+/*  Descanso                                    */
+/* -------------------------------------------- */
+
+export const REST_CONDITIONS = ["normal", "comfortable", "desperate"];
+
+/** Condição do descanso: a da cena (se marcada) ou a geral do mundo. */
+export function restCondition(scene=canvas?.scene) {
+  const fromScene = scene?.getFlag?.(MODULE_ID, "restCondition");
+  if ( REST_CONDITIONS.includes(fromScene) ) return fromScene;
+  const value = setting("restCondition");
+  return REST_CONDITIONS.includes(value) ? value : "normal";
+}
+
+/** Porcentagem recuperada para este ator, tipo de descanso e condição. */
+export function recoveryPercent(actor, type, condition=restCondition(), rules=getRules()) {
+  const table = (poolType(actor) === "ki") ? rules.kiRecovery : rules.recovery;
+  return Number(table?.[condition]?.[type] ?? table?.normal?.[type] ?? 0);
+}
+
+/** Classes do ator que curam (trocam Dados de Vida por mana no descanso curto). */
+export function healerClasses(actor, rules=getRules()) {
+  const list = new Set(rules.healerClasses ?? []);
+  return Object.values(actor.classes ?? {}).filter(c => list.has(c.identifier ?? c.system?.identifier));
+}
+
+/* -------------------------------------------- */
+/*  Conjuração: foco, fala e visão              */
+/* -------------------------------------------- */
+
+const norm = s => String(s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+/** O item conta como foco de conjuração? */
+export function isFocusItem(item, actor, rules=getRules()) {
+  if ( !item ) return false;
+  const flag = item.getFlag?.(MODULE_ID, "focus");
+  if ( flag === false ) return false;
+  // Precisa estar equipado (quando o item pode ser equipado).
+  if ( ("equipped" in (item.system ?? {})) && (item.system.equipped === false) && (item.type !== "loot") ) return false;
+  if ( flag === true ) return true;
+  if ( (item.type === "tool") && (item.system?.type?.value === "music") ) return true;
+  if ( item.system?.properties?.has?.("foc") ) return true;
+  const focusIds = new Set(Object.values(CONFIG.DND5E?.focusTypes ?? {}).flatMap(f => Object.keys(f.itemIds ?? {})));
+  const base = item.system?.type?.baseItem;
+  if ( base && focusIds.has(base) ) return true;
+  const name = norm(item.name);
+  const original = norm(item.getFlag?.("babele", "originalName"));
+  if ( (rules.focusKeywords ?? []).some(k => name.includes(norm(k)) || original.includes(norm(k))) ) return true;
+  // Arma ou escudo sagrado: paladinos e clérigos.
+  const holyWeapon = ["weapon"].includes(item.type) || (item.type === "equipment" && item.system?.type?.value === "shield");
+  if ( holyWeapon && item.system?.equipped ) {
+    const allowed = new Set(rules.weaponFocusClasses ?? []);
+    if ( Object.values(actor?.classes ?? {}).some(c => allowed.has(c.identifier ?? c.system?.identifier)) ) return true;
+  }
+  return false;
+}
+
+export function findFocus(actor, rules=getRules()) {
+  return actor.items.find(i => isFocusItem(i, actor, rules)) ?? null;
+}
+
+/**
+ * Verifica se o ator pode conjurar a magia agora.
+ * @returns {string|null} chave do motivo do bloqueio, ou null se pode.
+ */
+export function castingBlock(activity) {
+  const actor = activity.actor;
+  const item = activity.item;
+  if ( !actor || (actor.type !== "character") || (item?.type !== "spell") ) return null;
+  const method = item.system?.method ?? item.system?.preparation?.mode;
+  const statuses = actor.statuses ?? new Set();
+  // Falar a conjuração.
+  if ( setting("requireVerbal") && ["silenced", "unconscious", "paralyzed", "petrified", "stunned"].some(s => statuses.has(s)) ) {
+    return "Silenced";
+  }
+  // Ver o alvo (a não ser em magias pessoais ou de toque).
+  if ( setting("requireSight") && statuses.has("blinded") ) {
+    const units = activity.range?.units ?? item.system?.range?.units;
+    const affects = activity.target?.affects?.type ?? "";
+    if ( !["self", "touch"].includes(units) && (affects !== "self") ) return "Blind";
+  }
+  // Foco (magias inatas de espécie/talento não precisam).
+  if ( setting("requireFocus") && !["innate", "atwill"].includes(method) && !findFocus(actor) ) return "NoFocus";
+  return null;
 }
