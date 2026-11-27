@@ -8,13 +8,20 @@
       "full": "Mago",
       "half": "Meio-conjurador",
       "martial": "Guerreiro",
-      "third": "Conjuração da subclasse"
+      "third": "Conjuração da subclasse",
+      "ki": "Monge (Ki)"
     },
     "Chat": {
-      "SpellLevel": "Magia de {level}º círculo"
+      "SpellLevel": "Magia de {level}º círculo",
+      "Rest": "Descanso ({cond}): {pool} +{gain} ({pct}%) → {value}/{max}.",
+      "HitDice": "Gastou {n} Dado(s) de Vida para recuperar mana ({results}): +{gain} → {value}/{max}."
     },
     "Warn": {
-      "NotEnough": "Mana insuficiente para {name}: custa {cost}, você tem {value}."
+      "NotEnough": "Mana insuficiente para {name}: custa {cost}, você tem {value}.",
+      "NotEnoughKi": "Ki insuficiente para {name}: custa {cost}, você tem {value}.",
+      "Silenced": "{name} não consegue falar a conjuração de {spell} (silenciado, inconsciente, paralisado, petrificado ou atordoado).",
+      "Blind": "{name} precisa ver o alvo para conjurar {spell}.",
+      "NoFocus": "{name} precisa de um foco equipado (varinha, cajado, símbolo sagrado, instrumento…) para conjurar {spell}."
     },
     "Config": {
       "Open": "Detalhes da mana",
@@ -33,10 +40,6 @@
         "Int": "Inteligência para todas as classes",
         "Wis": "Sabedoria para todas as classes",
         "Highest": "O maior entre Inteligência e Sabedoria"
-      },
-      "ShortRest": {
-        "Name": "Recuperação no descanso curto (%)",
-        "Hint": "Porcentagem da mana máxima recuperada num descanso curto. O descanso longo sempre enche a mana."
       },
       "IncludeSpecies": {
         "Name": "Traços de espécie gastam mana",
@@ -59,6 +62,56 @@
         "ResetDone": "Tabelas de mana restauradas para o padrão.",
         "Saved": "Tabelas de mana salvas.",
         "Invalid": "JSON inválido: {error}"
+      },
+      "RestCondition": {
+        "Name": "Condição de descanso",
+        "Hint": "Normal: longo 40%, curto 15%. Confortável: longo enche tudo. Desespero: longo 33%, curto nada. Cada cena pode ter a sua (API ou macro). Valores editáveis em \"Tabelas de mana\"."
+      },
+      "requireFocus": {
+        "Name": "Exigir foco para conjurar",
+        "Hint": "Personagens só conjuram com um foco equipado (varinha, cajado, orbe, símbolo sagrado, instrumento, ou a arma/escudo do paladino e do clérigo). Componentes materiais e custo em ouro não são usados. Magias inatas não precisam."
+      },
+      "requireVerbal": {
+        "Name": "Exigir fala",
+        "Hint": "Não conjura quem está Silenciado, inconsciente, paralisado, petrificado ou atordoado."
+      },
+      "requireSight": {
+        "Name": "Exigir ver o alvo",
+        "Hint": "Cego não conjura magias à distância (só pessoais ou de toque)."
+      }
+    },
+    "Ki": "Ki",
+    "Status": {
+      "Silenced": "Silenciado"
+    },
+    "HitDice": {
+      "Title": "Recuperar mana — {name}",
+      "Hint": "Descanso curto ({cond}). Mana: {value}/{max}. Dados disponíveis: {dice}. Cada dado devolve {pct}% do resultado em mana (arredondado para cima) e deixa de servir para curar.",
+      "Count": "Dados de Vida a gastar",
+      "Spend": "Gastar"
+    },
+    "Rest": {
+      "normal": "Normal",
+      "comfortable": "Confortável (taberna, castelo)",
+      "desperate": "Desespero",
+      "Title": "Condição de descanso",
+      "Long": "Longo",
+      "Short": "Curto",
+      "World": "Condição geral",
+      "Scene": "Só nesta cena ({scene})",
+      "UseWorld": "Usar a condição geral",
+      "Now": "Descanso agora: {cond}.",
+      "GMOnly": "Só o mestre define a condição de descanso.",
+      "Tooltip": "Descanso: {cond}",
+      "HealerHint": "Clérigo, Druida, Paladino, Bardo e Patrulheiro não recebem a % do descanso curto: gastam Dados de Vida para recuperar mana (exceto em Desespero)."
+    },
+    "Focus": {
+      "Toggle": "Foco de conjuração",
+      "Missing": "Sem foco equipado: não pode conjurar.",
+      "State": {
+        "on": "{name} agora é um foco de conjuração.",
+        "off": "{name} não serve como foco.",
+        "auto": "{name}: foco detectado automaticamente."
       }
     }
   }
