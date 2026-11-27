@@ -6,6 +6,24 @@ Este módulo troca os **espaços de magia** e os **usos limitados das habilidade
 - Foundry VTT **v14** (testado contra a build 370)
 - Sistema **dnd5e 6.0+** (escrito sobre o código da 6.1.1)
 
+## Novidades da 1.1
+
+- **Ki do Monge.** O Monge não usa mana: tem a própria reserva de Ki (barra laranja) igual ao nível de monge, e todas as habilidades dele gastam Ki.
+- **Conjuração sem material.** Componentes materiais e custos em ouro deixam de existir; o poder vem da mana. Para conjurar é preciso:
+  - **ter um foco equipado:** varinha, cajado, orbe, cristal, símbolo sagrado, amuleto, relicário, foco druídico ou instrumento musical. O paladino e o clérigo também podem usar a arma ou o escudo equipado. Qualquer item vira foco pelo botão **Foco de conjuração** no cabeçalho da ficha do item;
+  - **poder falar:** não conjura quem está Silenciado, inconsciente, paralisado, petrificado ou atordoado;
+  - **ver o alvo:** quem está cego só conjura magias pessoais ou de toque.
+  Magias inatas (de espécie ou talento) não precisam de foco. Cada exigência pode ser desligada nas configurações.
+- **Recuperação conforme a condição do descanso.** O mestre escolhe a condição geral ou a de uma cena (macro `game.modules.get("dnd5e-mana").api.chooseRestCondition()`):
+
+| Condição | Descanso longo | Descanso curto | Ki (longo / curto) |
+|---|---:|---:|---:|
+| Normal | 40% | 15% | 50% / 50% |
+| Confortável (taberna, castelo) | 100% | 15% | 100% / 50% |
+| Desespero | 33% | 0% | 33% / 0% |
+
+  **Classes que curam** (Clérigo, Druida, Paladino, Bardo, Patrulheiro) não recebem os 15% do descanso curto: depois do descanso escolhem quantos **Dados de Vida** gastar, e cada dado devolve metade do resultado em mana (não em Desespero). Tudo isso é editável em **Tabelas de mana** (`recovery`, `kiRecovery`, `healerClasses`, `hitDieManaFactor`, `focusKeywords`).
+
 ## Como funciona
 
 ### Mana máxima
@@ -40,7 +58,7 @@ Mana = tabela da(s) classe(s) + bônus de atributo + bônus de espécie + bônus
 
 1. Bardo, Bruxo, Clérigo, Druida, Feiticeiro, Mago
 2. Paladino, Patrulheiro, Artífice
-3. Bárbaro, Guerreiro, Ladino, Monge
+3. Bárbaro, Guerreiro, Ladino (o Monge usa Ki, veja abaixo)
 4. Cavaleiro Místico, Trapaceiro Arcano (somado à tabela de guerreiro)
 
 Classes que não estão na lista (por exemplo, importadas pelo Plutonium) são classificadas pela progressão de magia que têm no dnd5e.
@@ -92,8 +110,7 @@ O atributo é escolhido em **Configurações → Atributo da mana**:
 Algumas habilidades continuam usando os próprios usos (valor `-1` na tabela): Ataque Furtivo, Recuperação Arcana, Recuperação Natural e Fúria Implacável, entre outras. Habilidades sem usos limitados, como Ação Ardilosa, continuam grátis.
 
 ### Descansos
-- **Longo:** enche a mana.
-- **Curto:** recupera 25% da mana máxima (ajustável).
+Dependem da condição do descanso (veja "Novidades da 1.1"). Cada descanso deixa uma linha no chat com quanto foi recuperado.
 
 ## Na ficha
 A barra azul de **Mana** fica logo abaixo dos PV:
@@ -104,7 +121,8 @@ Se faltar mana, a magia ou habilidade não é usada e aparece um aviso. O gasto 
 
 ## Configurações (Mestre)
 - Atributo da mana
-- Recuperação no descanso curto (%)
+- Condição de descanso (Normal, Confortável, Desespero)
+- Exigir foco, exigir fala, exigir ver o alvo (ligados por padrão)
 - Traços de espécie gastam mana (desligado por padrão)
 - Talentos gastam mana (desligado por padrão)
 - Aplicar a NPCs (desligado por padrão)

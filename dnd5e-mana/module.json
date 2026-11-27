@@ -1,8 +1,8 @@
 {
   "id": "dnd5e-mana",
   "title": "D&D 5e — Sistema de Mana",
-  "description": "Substitui espaços de magia e usos limitados de habilidades de classe por uma reserva única de mana. Tabelas por tipo de classe (marcial, meio-conjurador, conjurador), bônus por atributo (INT/SAB) e por espécie.",
-  "version": "1.0.0",
+  "description": "Substitui espaços de magia, componentes materiais e usos limitados de habilidades de classe por mana (Ki para o Monge). Conjurar exige foco, fala e visão do alvo; recuperação conforme a condição do descanso (normal, confortável, desespero).",
+  "version": "1.1.0",
   "authors": [{ "name": "arnauldgl" }],
   "compatibility": {
     "minimum": "14",
@@ -25,5 +25,5 @@
   ],
   "url": "https://github.com/arnauldgl/ded53atualizado",
   "manifest": "https://raw.githubusercontent.com/arnauldgl/ded53atualizado/main/dnd5e-mana/module.json",
-  "download": "https://github.com/arnauldgl/ded53atualizado/releases/latest/download/dnd5e-mana.zip"
+  "download": "https://github.com/arnauldgl/ded53atualizado/releases/download/v1.1.0/dnd5e-mana.zip"
 }
